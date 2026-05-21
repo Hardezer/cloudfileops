@@ -1,9 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
+import { PrismaService } from './database/prisma.service';
 
 describe('AppController', () => {
   let appController: AppController;
+
+  const mockPrismaService = {
+    $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
+  };
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
@@ -25,6 +30,10 @@ describe('AppController', () => {
             },
           },
         },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
       ],
     }).compile();
 
@@ -43,6 +52,15 @@ describe('AppController', () => {
         status: 'ok',
         service: 'CloudFileOps API',
         environment: 'development',
+      });
+    });
+  });
+
+  describe('database health', () => {
+    it('should return database health status', async () => {
+      await expect(appController.getDatabaseHealth()).resolves.toEqual({
+        status: 'ok',
+        database: 'connected',
       });
     });
   });

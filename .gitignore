@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build
+dist/
+*/dist/
+build/
+*/build/
+
+# Environment files
+.env
+*/.env
+.env.local
+*/.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Coverage
+coverage/
+*/coverage/
+/generated/prisma

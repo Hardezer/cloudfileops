@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: cloudfileops-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: cloudfileops_user
+      POSTGRES_PASSWORD: cloudfileops_password
+      POSTGRES_DB: cloudfileops_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - cloudfileops_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  cloudfileops_postgres_data:
