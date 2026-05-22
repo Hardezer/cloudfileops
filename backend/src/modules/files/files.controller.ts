@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateFileDto } from './dto/create-file.dto';
 import { UpdateFileStatusDto } from './dto/update-file-status.dto';
 import { FilesService } from './files.service';
+import { CreatePresignedUrlDto } from './dto/create-presigned-url.dto';
 
 type AuthenticatedUser = {
   id: string;
@@ -24,6 +25,14 @@ type AuthenticatedUser = {
 @Controller('files')
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
+
+  @Post('presigned-url')
+  createPresignedUrl(
+    @Body() createPresignedUrlDto: CreatePresignedUrlDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.filesService.createPresignedUrl(createPresignedUrlDto, user);
+  }
 
   @Post()
   create(

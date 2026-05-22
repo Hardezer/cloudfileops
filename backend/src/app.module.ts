@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { S3Module } from './aws/s3/s3.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { appConfig } from './config/app.config';
@@ -14,6 +15,7 @@ import { FilesModule } from './modules/files/files.module';
       load: [appConfig],
     }),
     PrismaModule,
+    S3Module,
     AuthModule,
     FilesModule,
   ],

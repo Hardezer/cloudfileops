@@ -7,6 +7,10 @@ import { FileStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateFileDto } from './dto/create-file.dto';
 import { UpdateFileStatusDto } from './dto/update-file-status.dto';
+import { S3Service } from '../../aws/s3/s3.service';
+import { CreatePresignedUrlDto } from './dto/create-presigned-url.dto';
+import { ConfigService } from '@nestjs/config';
+
 
 type AuthenticatedUser = {
   id: string;
@@ -17,8 +21,11 @@ type AuthenticatedUser = {
 
 @Injectable()
 export class FilesService {
-  constructor(private readonly prismaService: PrismaService) {}
-
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly s3Service: S3Service,
+    private readonly configService: ConfigService,
+  ) {}
   async create(createFileDto: CreateFileDto, user: AuthenticatedUser) {
     const file = await this.prismaService.file.create({
       data: {
@@ -72,6 +79,73 @@ export class FilesService {
         },
       },
     });
+  }
+
+  async createPresignedUrl(
+    createPresignedUrlDto: CreatePresignedUrlDto,
+    user: AuthenticatedUser,
+  ) {
+    const file = await this.prismaService.file.create({
+      data: {
+        companyId: user.companyId,
+        uploadedById: user.id,
+        originalName: createPresignedUrlDto.originalName,
+        status: FileStatus.UPLOADED,
+      },
+      select: {
+        id: true,
+        originalName: true,
+        s3Key: true,
+        status: true,
+        companyId: true,
+        uploadedById: true,
+        createdAt: true,
+      },
+    });
+
+    const safeOriginalName = createPresignedUrlDto.originalName.replace(
+      /[^a-zA-Z0-9._-]/g,
+      '_',
+    );
+
+    const s3Key = `raw/${user.companyId}/${file.id}/${safeOriginalName}`;
+
+    const uploadUrl = await this.s3Service.createPresignedUploadUrl({
+      key: s3Key,
+      contentType: createPresignedUrlDto.contentType,
+    });
+
+    const updatedFile = await this.prismaService.file.update({
+      where: {
+        id: file.id,
+      },
+      data: {
+        s3Key: s3Key,
+      },
+      select: {
+        id: true,
+        originalName: true,
+        s3Key: true,
+        status: true,
+        totalRows: true,
+        validRows: true,
+        invalidRows: true,
+        createdAt: true,
+        processedAt: true,
+        companyId: true,
+        uploadedById: true,
+      },
+    });
+
+    const expiresInSeconds =
+      this.configService.get<number>('awsS3PresignedUrlExpiresIn') || 300;
+
+    return {
+      file: updatedFile,
+      uploadUrl: uploadUrl,
+      method: 'PUT',
+      expiresInSeconds: expiresInSeconds,
+    };
   }
 
   async findOne(id: string, user: AuthenticatedUser) {
