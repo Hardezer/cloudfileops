@@ -15,4 +15,6 @@ export const appConfig = () => ({
     10,
   ),
   awsSqsFileProcessingQueueUrl: process.env.AWS_SQS_FILE_PROCESSING_QUEUE_URL,
+
+  internalApiKey: process.env.INTERNAL_API_KEY,
 });

@@ -8,6 +8,7 @@ import { appConfig } from './config/app.config';
 import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { FilesModule } from './modules/files/files.module';
+import { ProcessingModule } from './modules/processing/processing.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { FilesModule } from './modules/files/files.module';
     SqsModule,
     AuthModule,
     FilesModule,
+    ProcessingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
