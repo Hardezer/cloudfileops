@@ -24,4 +24,7 @@ async function bootstrap() {
   console.log(`CloudFileOps API running on http://localhost:${port}`);
 }
 
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  console.error('Error starting CloudFileOps API:', error);
+  process.exit(1);
+});
