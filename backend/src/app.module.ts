@@ -8,7 +8,9 @@ import { appConfig } from './config/app.config';
 import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { FilesModule } from './modules/files/files.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { ProcessingModule } from './modules/processing/processing.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { ProcessingModule } from './modules/processing/processing.module';
     AuthModule,
     FilesModule,
     ProcessingModule,
+    MetricsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

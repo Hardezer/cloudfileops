@@ -10,7 +10,8 @@ export class S3Service {
   constructor(private readonly configService: ConfigService) {
     const region = this.configService.get<string>('awsRegion');
     const accessKeyId = this.configService.get<string>('awsAccessKeyId');
-    const secretAccessKey = this.configService.get<string>('awsSecretAccessKey');
+    const secretAccessKey =
+      this.configService.get<string>('awsSecretAccessKey');
 
     if (!region) {
       throw new Error('AWS_REGION is not defined');

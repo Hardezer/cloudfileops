@@ -11,6 +11,43 @@ services:
       - "5432:5432"
     volumes:
       - cloudfileops_postgres_data:/var/lib/postgresql/data
+    networks:
+      - cloudfileops-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloudfileops-backend
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      APP_NAME: CloudFileOps API
+
+      DATABASE_URL: postgresql://cloudfileops_user:cloudfileops_password@postgres:5432/cloudfileops_db?schema=public
+
+      JWT_SECRET: cloudfileops_super_secret_key
+      JWT_EXPIRES_IN: 1d
+
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_S3_BUCKET_NAME: cloudfileops-hardezer-dev-2026
+      AWS_S3_PRESIGNED_URL_EXPIRES_IN: 300
+      AWS_SQS_FILE_PROCESSING_QUEUE_URL: ${AWS_SQS_FILE_PROCESSING_QUEUE_URL}
+
+      INTERNAL_API_KEY: cloudfileops_internal_dev_key
+    networks:
+      - cloudfileops-network
 
 volumes:
   cloudfileops_postgres_data:
+
+networks:
+  cloudfileops-network:
+    driver: bridge
