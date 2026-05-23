@@ -14,4 +14,5 @@ export const appConfig = () => ({
     process.env.AWS_S3_PRESIGNED_URL_EXPIRES_IN || '300',
     10,
   ),
+  awsSqsFileProcessingQueueUrl: process.env.AWS_SQS_FILE_PROCESSING_QUEUE_URL,
 });

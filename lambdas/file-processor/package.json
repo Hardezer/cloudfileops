@@ -1,0 +1,14 @@
+{
+  "name": "file-processor",
+  "version": "1.0.0",
+  "description": "CloudFileOps Lambda for processing uploaded files",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.0.0"
+  }
+}

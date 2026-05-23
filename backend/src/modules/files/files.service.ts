@@ -3,14 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FileStatus } from '@prisma/client';
+import { S3Service } from '../../aws/s3/s3.service';
+import { SqsService } from '../../aws/sqs/sqs.service';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateFileDto } from './dto/create-file.dto';
-import { UpdateFileStatusDto } from './dto/update-file-status.dto';
-import { S3Service } from '../../aws/s3/s3.service';
 import { CreatePresignedUrlDto } from './dto/create-presigned-url.dto';
-import { ConfigService } from '@nestjs/config';
-
+import { UpdateFileStatusDto } from './dto/update-file-status.dto';
 
 type AuthenticatedUser = {
   id: string;
@@ -24,6 +24,7 @@ export class FilesService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly s3Service: S3Service,
+    private readonly sqsService: SqsService,
     private readonly configService: ConfigService,
   ) {}
   async create(createFileDto: CreateFileDto, user: AuthenticatedUser) {
@@ -137,6 +138,22 @@ export class FilesService {
       },
     });
 
+    const bucketName = this.configService.get<string>('awsS3BucketName');
+
+    if (!bucketName) {
+      throw new Error('AWS_S3_BUCKET_NAME is not defined');
+    }
+
+    const queueMessage = await this.sqsService.sendFileProcessingMessage({
+      fileId: updatedFile.id,
+      companyId: updatedFile.companyId,
+      uploadedById: updatedFile.uploadedById,
+      bucketName: bucketName,
+      s3Key: s3Key,
+      originalName: updatedFile.originalName,
+      contentType: createPresignedUrlDto.contentType,
+    });
+
     const expiresInSeconds =
       this.configService.get<number>('awsS3PresignedUrlExpiresIn') || 300;
 
@@ -145,6 +162,9 @@ export class FilesService {
       uploadUrl: uploadUrl,
       method: 'PUT',
       expiresInSeconds: expiresInSeconds,
+      queueMessage: {
+        messageId: queueMessage.messageId,
+      },
     };
   }
 
