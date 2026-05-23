@@ -138,22 +138,6 @@ export class FilesService {
       },
     });
 
-    const bucketName = this.configService.get<string>('awsS3BucketName');
-
-    if (!bucketName) {
-      throw new Error('AWS_S3_BUCKET_NAME is not defined');
-    }
-
-    const queueMessage = await this.sqsService.sendFileProcessingMessage({
-      fileId: updatedFile.id,
-      companyId: updatedFile.companyId,
-      uploadedById: updatedFile.uploadedById,
-      bucketName: bucketName,
-      s3Key: s3Key,
-      originalName: updatedFile.originalName,
-      contentType: createPresignedUrlDto.contentType,
-    });
-
     const expiresInSeconds =
       this.configService.get<number>('awsS3PresignedUrlExpiresIn') || 300;
 
@@ -162,6 +146,80 @@ export class FilesService {
       uploadUrl: uploadUrl,
       method: 'PUT',
       expiresInSeconds: expiresInSeconds,
+    };
+  }
+
+  async confirmUpload(id: string, user: AuthenticatedUser) {
+    const file = await this.prismaService.file.findUnique({
+      where: {
+        id: id,
+      },
+      select: {
+        id: true,
+        originalName: true,
+        s3Key: true,
+        status: true,
+        companyId: true,
+        uploadedById: true,
+        createdAt: true,
+      },
+    });
+
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    if (file.companyId !== user.companyId) {
+      throw new ForbiddenException('You do not have access to this file');
+    }
+
+    if (!file.s3Key) {
+      throw new Error('File does not have an S3 key');
+    }
+
+    if (file.status !== FileStatus.UPLOADED) {
+      throw new Error('File upload has already been confirmed or processed');
+    }
+    const bucketName = this.configService.get<string>('awsS3BucketName');
+
+    if (!bucketName) {
+      throw new Error('AWS_S3_BUCKET_NAME is not defined');
+    }
+
+    const updatedFile = await this.prismaService.file.update({
+      where: {
+        id: file.id,
+      },
+      data: {
+        status: FileStatus.PROCESSING,
+      },
+      select: {
+        id: true,
+        originalName: true,
+        s3Key: true,
+        status: true,
+        totalRows: true,
+        validRows: true,
+        invalidRows: true,
+        createdAt: true,
+        processedAt: true,
+        companyId: true,
+        uploadedById: true,
+      },
+    });
+
+    const queueMessage = await this.sqsService.sendFileProcessingMessage({
+      fileId: updatedFile.id,
+      companyId: updatedFile.companyId,
+      uploadedById: updatedFile.uploadedById,
+      bucketName: bucketName,
+      s3Key: updatedFile.s3Key as string,
+      originalName: updatedFile.originalName,
+      contentType: 'text/csv',
+    });
+
+    return {
+      file: updatedFile,
       queueMessage: {
         messageId: queueMessage.messageId,
       },

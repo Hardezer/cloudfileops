@@ -57,6 +57,14 @@ export class FilesController {
     return this.filesService.findErrors(id, user);
   }
 
+  @Patch(':id/confirm-upload')
+  confirmUpload(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.filesService.confirmUpload(id, user);
+  }
+
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
