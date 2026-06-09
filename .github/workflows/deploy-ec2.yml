@@ -1,0 +1,111 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-ec2.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "160126368285"
+  ECR_REPOSITORY: cloudfileops-backend
+  ECR_REGISTRY: 160126368285.dkr.ecr.us-east-1.amazonaws.com
+  IMAGE_TAG: latest
+
+jobs:
+  deploy:
+    name: Build, Push and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      - name: Build Docker image
+        run: |
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG ./backend
+
+      - name: Tag Docker image
+        run: |
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/cloudfileops-key.pem
+          chmod 600 ~/.ssh/cloudfileops-key.pem
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy on EC2
+        run: |
+          ssh -i ~/.ssh/cloudfileops-key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            AWS_REGION="us-east-1"
+            ECR_REGISTRY="160126368285.dkr.ecr.us-east-1.amazonaws.com"
+            ECR_REPOSITORY="cloudfileops-backend"
+            IMAGE_TAG="latest"
+
+            echo "Logging in to ECR..."
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+            echo "Pulling latest image..."
+            docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+            echo "Stopping old backend container if exists..."
+            docker stop cloudfileops-backend || true
+            docker rm cloudfileops-backend || true
+
+            echo "Starting new backend container..."
+            docker run -d \
+              --name cloudfileops-backend \
+              --network cloudfileops-network \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e PORT=3000 \
+              -e NODE_ENV=production \
+              -e APP_NAME="CloudFileOps API" \
+              -e DATABASE_URL="postgresql://cloudfileops_user:cloudfileops_password@cloudfileops-postgres:5432/cloudfileops_db?schema=public" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e JWT_EXPIRES_IN="1d" \
+              -e AWS_REGION="us-east-1" \
+              -e AWS_S3_BUCKET_NAME="cloudfileops-hardezer-dev-2026" \
+              -e AWS_S3_PRESIGNED_URL_EXPIRES_IN="300" \
+              -e AWS_SQS_FILE_PROCESSING_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/160126368285/cloudfileops-file-processing-queue" \
+              -e INTERNAL_API_KEY="${{ secrets.INTERNAL_API_KEY }}" \
+              $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+            echo "Waiting for backend..."
+            sleep 10
+
+            echo "Running health checks..."
+            curl -f http://localhost:3000/health
+            curl -f http://localhost:3000/db/health
+
+            echo "Deploy completed successfully."
+          EOF
+        
