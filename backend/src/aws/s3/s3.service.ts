@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class S3Service {
@@ -17,21 +17,20 @@ export class S3Service {
       throw new Error('AWS_REGION is not defined');
     }
 
-    if (!accessKeyId) {
-      throw new Error('AWS_ACCESS_KEY_ID is not defined');
-    }
+    const clientConfig =
+      accessKeyId && secretAccessKey
+        ? {
+            region: region,
+            credentials: {
+              accessKeyId: accessKeyId,
+              secretAccessKey: secretAccessKey,
+            },
+          }
+        : {
+            region: region,
+          };
 
-    if (!secretAccessKey) {
-      throw new Error('AWS_SECRET_ACCESS_KEY is not defined');
-    }
-
-    this.s3Client = new S3Client({
-      region: region,
-      credentials: {
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-      },
-    });
+    this.s3Client = new S3Client(clientConfig);
   }
 
   async createPresignedUploadUrl(params: {

@@ -1,6 +1,6 @@
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
 @Injectable()
 export class SqsService {
@@ -16,21 +16,20 @@ export class SqsService {
       throw new Error('AWS_REGION is not defined');
     }
 
-    if (!accessKeyId) {
-      throw new Error('AWS_ACCESS_KEY_ID is not defined');
-    }
+    const clientConfig =
+      accessKeyId && secretAccessKey
+        ? {
+            region: region,
+            credentials: {
+              accessKeyId: accessKeyId,
+              secretAccessKey: secretAccessKey,
+            },
+          }
+        : {
+            region: region,
+          };
 
-    if (!secretAccessKey) {
-      throw new Error('AWS_SECRET_ACCESS_KEY is not defined');
-    }
-
-    this.sqsClient = new SQSClient({
-      region: region,
-      credentials: {
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-      },
-    });
+    this.sqsClient = new SQSClient(clientConfig);
   }
 
   async sendFileProcessingMessage(params: {
