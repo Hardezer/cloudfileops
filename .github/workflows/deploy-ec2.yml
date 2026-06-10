@@ -18,6 +18,9 @@ env:
   ECR_REPOSITORY: cloudfileops-backend
   ECR_REGISTRY: 160126368285.dkr.ecr.us-east-1.amazonaws.com
   IMAGE_TAG: latest
+  AWS_RETRY_MODE: standard
+  AWS_MAX_ATTEMPTS: 5
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
@@ -39,7 +42,19 @@ jobs:
 
       - name: Login to Amazon ECR
         run: |
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+            for i in 1 2 3 4 5; do
+            echo "ECR login attempt $i..."
+            if aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY; then
+                echo "ECR login successful"
+                exit 0
+            fi
+
+            echo "ECR login failed. Retrying in 15 seconds..."
+            sleep 15
+            done
+
+            echo "ECR login failed after 5 attempts"
+            exit 1
 
       - name: Build Docker image
         run: |
