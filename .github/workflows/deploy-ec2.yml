@@ -70,10 +70,15 @@ jobs:
 
       - name: Prepare SSH key
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/cloudfileops-key.pem
-          chmod 600 ~/.ssh/cloudfileops-key.pem
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+            mkdir -p ~/.ssh
+            printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/cloudfileops-key.pem
+            chmod 600 ~/.ssh/cloudfileops-key.pem
+
+            echo "Checking SSH connectivity to EC2..."
+            nc -vz ${{ secrets.EC2_HOST }} 22
+
+            echo "Adding EC2 host to known_hosts..."
+            ssh-keyscan -T 30 -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
         run: |
