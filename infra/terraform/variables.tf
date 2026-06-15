@@ -25,3 +25,21 @@ variable "default_tags" {
     ManagedBy   = "Terraform"
   }
 }
+
+variable "files_bucket_name" {
+  description = "S3 bucket used to store CloudFileOps files"
+  type        = string
+  default     = "cloudfileops-hardezer-dev-2026"
+}
+
+variable "file_processing_queue_name" {
+  description = "SQS queue used for file processing messages"
+  type        = string
+  default     = "cloudfileops-file-processing-queue"
+}
+
+variable "file_processing_dlq_name" {
+  description = "SQS dead letter queue used for failed file processing messages"
+  type        = string
+  default     = "cloudfileops-file-processing-dlq"
+}
